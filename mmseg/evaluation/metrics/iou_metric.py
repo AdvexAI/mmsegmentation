@@ -52,6 +52,7 @@ class IoUMetric(BaseMetric):
                  output_dir: Optional[str] = None,
                  format_only: bool = False,
                  prefix: Optional[str] = None,
+                 desired_class_name: Optional[str] = None,
                  **kwargs) -> None:
         super().__init__(collect_device=collect_device, prefix=prefix)
 
@@ -63,7 +64,7 @@ class IoUMetric(BaseMetric):
         if self.output_dir and is_main_process():
             mkdir_or_exist(self.output_dir)
         self.format_only = format_only
-
+        self.desired_class_name = desired_class_name
     def process(self, data_batch: dict, data_samples: Sequence[dict]) -> None:
         """Process one batch of data and data_samples.
 
@@ -128,14 +129,24 @@ class IoUMetric(BaseMetric):
         ret_metrics = self.total_area_to_metrics(
             total_area_intersect, total_area_union, total_area_pred_label,
             total_area_label, self.metrics, self.nan_to_num, self.beta)
-
+        
         class_names = self.dataset_meta['classes']
 
         # summary table
-        ret_metrics_summary = OrderedDict({
-            ret_metric: np.round(np.nanmean(ret_metric_value) * 100, 2)
-            for ret_metric, ret_metric_value in ret_metrics.items()
-        })
+        if self.desired_class_name is not None:
+            ret_metrics_summary = {}
+            desired_class_index = class_names.index(self.desired_class_name)
+            for k,v in ret_metrics.items():
+                if k == 'aAcc':
+                    ret_metrics_summary[k] = np.round(v * 100, 2)
+                else:
+                    ret_metrics_summary[k] = np.round(v[desired_class_index] * 100, 2)
+            ret_metrics_summary = OrderedDict(ret_metrics_summary)
+        else:
+            ret_metrics_summary = OrderedDict({
+                ret_metric: np.round(np.nanmean(ret_metric_value) * 100, 2)
+                for ret_metric, ret_metric_value in ret_metrics.items()
+            })
         metrics = dict()
         for key, val in ret_metrics_summary.items():
             if key == 'aAcc':
