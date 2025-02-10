@@ -16,7 +16,7 @@ class GenericBinaryDataset(BaseSegDataset):
     """
     METAINFO = dict(
         classes=('background', 'foreground'),
-        palette=[[120, 120, 120], [6, 230, 230]])
+        palette=[[0, 0, 0], [6, 230, 230]])
 
     def __init__(self,
                  img_suffix='.png',
